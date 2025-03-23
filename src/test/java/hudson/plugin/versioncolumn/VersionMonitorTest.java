@@ -21,6 +21,7 @@ import hudson.slaves.OfflineCause;
 import java.io.IOException;
 import jenkins.security.MasterToSlaveCallable;
 import jenkins.slaves.RemotingVersionInfo;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.jvnet.hudson.test.FakeLauncher;
@@ -36,19 +37,14 @@ class VersionMonitorTest {
 
     private VersionMonitor versionMonitor;
     private VersionMonitor.DescriptorImpl descriptor;
-    private JenkinsRule j;
-
-    @BeforeEach
-    public void createVersionMonitor(JenkinsRule rule) {
-        // Store the rule for later use
-        this.j = rule;
 
     @BeforeAll
     static void setUp(JenkinsRule rule) {
         j = rule;
     }
 
-        // Now create the version monitor
+    @BeforeEach
+    void createVersionMonitor() {
         versionMonitor = new VersionMonitor();
         descriptor = (VersionMonitor.DescriptorImpl) versionMonitor.getDescriptor();
     }
