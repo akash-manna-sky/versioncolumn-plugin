@@ -17,7 +17,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
 
-public class VersionMonitorLoggerTest {
+class VersionMonitorLoggerTest {
 
     private VersionMonitor.DescriptorImpl descriptor;
     private Computer computer;
@@ -26,7 +26,7 @@ public class VersionMonitorLoggerTest {
     private TestLogHandler handler;
 
     @BeforeEach
-    public void setUp() {
+    void setUp() {
         descriptor = spy(new VersionMonitor.DescriptorImpl());
         doReturn(false).when(descriptor).isIgnored(); // Not ignored
 
@@ -41,12 +41,12 @@ public class VersionMonitorLoggerTest {
     }
 
     @AfterEach
-    public void tearDown() {
+    void tearDown() {
         logger.removeHandler(handler);
     }
 
     @Test
-    public void testLoggingWhenMarkingOffline() throws IOException, InterruptedException {
+    void testLoggingWhenMarkingOffline() throws IOException, InterruptedException {
         when(computer.getChannel()).thenReturn(channel);
         when(computer.getName()).thenReturn("TestAgent");
         when(channel.call(ArgumentMatchers.<MasterToSlaveCallable<String, IOException>>any()))
