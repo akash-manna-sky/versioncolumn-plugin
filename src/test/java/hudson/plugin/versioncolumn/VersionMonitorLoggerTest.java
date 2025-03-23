@@ -1,85 +1,66 @@
 package hudson.plugin.versioncolumn;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.*;
 
 import hudson.model.Computer;
 import hudson.remoting.VirtualChannel;
 import java.io.IOException;
-import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
-import java.util.logging.Logger;
 import jenkins.security.MasterToSlaveCallable;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.jvnet.hudson.test.LoggerRule;
 import org.mockito.ArgumentMatchers;
 
-class VersionMonitorLoggerTest {
+public class VersionMonitorLoggerTest {
+
+    @Rule
+    public LoggerRule loggerRule = new LoggerRule();
 
     private VersionMonitor.DescriptorImpl descriptor;
     private Computer computer;
     private VirtualChannel channel;
-    private Logger logger;
-    private TestLogHandler handler;
 
-    @BeforeEach
-    void setUp() {
+    @Before
+    public void setUp() {
         descriptor = spy(new VersionMonitor.DescriptorImpl());
         doReturn(false).when(descriptor).isIgnored(); // Not ignored
 
         computer = mock(Computer.class);
         channel = mock(VirtualChannel.class);
 
-        // Set up logger to capture log messages
-        logger = Logger.getLogger(VersionMonitor.class.getName());
-        handler = new TestLogHandler();
-        logger.addHandler(handler);
-        logger.setLevel(Level.ALL);
-    }
-
-    @AfterEach
-    void tearDown() {
-        logger.removeHandler(handler);
+        // Configure the LoggerRule to capture messages from VersionMonitor
+        loggerRule.record(VersionMonitor.class, Level.WARNING).capture(10);
     }
 
     @Test
-    void testLoggingWhenMarkingOffline() throws IOException, InterruptedException {
+    public void testLoggingWhenMarkingOffline() throws IOException, InterruptedException {
+        // Arrange
         when(computer.getChannel()).thenReturn(channel);
         when(computer.getName()).thenReturn("TestAgent");
         when(channel.call(ArgumentMatchers.<MasterToSlaveCallable<String, IOException>>any()))
                 .thenReturn("different-version");
 
+        // Act
         descriptor.monitor(computer);
 
-        // Verify the log message contains the agent name
-        assertTrue(handler.getMessage().contains("TestAgent"), "Log should contain agent name");
-        assertEquals(Level.WARNING, handler.getLevel());
-    }
+        // Assert
+        assertTrue(
+                "Log should contain agent name",
+                loggerRule.getMessages().stream().anyMatch(msg -> msg.contains("TestAgent")));
 
-    // Custom log handler to capture logs
-    private static class TestLogHandler extends Handler {
-        private LogRecord record;
-
-        @Override
-        public void publish(LogRecord record) {
-            this.record = record;
-        }
-
-        @Override
-        public void flush() {}
-
-        @Override
-        public void close() {}
-
-        public String getMessage() {
-            return record.getMessage();
-        }
-
-        public Level getLevel() {
-            return record.getLevel();
-        }
+        // Verify the log level is WARNING
+        assertEquals(
+                Level.WARNING.getName(),
+                loggerRule.getRecords().stream()
+                        .filter(record -> record.getMessage().contains("TestAgent"))
+                        .findFirst()
+                        .map(LogRecord::getLevel)
+                        .map(Level::getName)
+                        .orElse(null));
     }
 }
