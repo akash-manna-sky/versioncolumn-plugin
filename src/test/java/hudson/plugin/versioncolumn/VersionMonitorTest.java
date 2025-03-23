@@ -1,10 +1,10 @@
 package hudson.plugin.versioncolumn;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
@@ -21,24 +21,26 @@ import hudson.slaves.OfflineCause;
 import java.io.IOException;
 import jenkins.security.MasterToSlaveCallable;
 import jenkins.slaves.RemotingVersionInfo;
-import org.junit.Before;
-import org.junit.ClassRule;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.jvnet.hudson.test.FakeLauncher;
 import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.PretendSlave;
+import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
 import org.mockito.ArgumentMatchers;
 
+@WithJenkins
 public class VersionMonitorTest {
-
-    @ClassRule
-    public static JenkinsRule j = new JenkinsRule();
 
     private VersionMonitor versionMonitor;
     private VersionMonitor.DescriptorImpl descriptor;
+    private JenkinsRule j;
 
-    @Before
-    public void createVersionMonitor() {
+    @BeforeEach
+    public void createVersionMonitor(JenkinsRule rule) {
+        // Store the rule for later use
+        this.j = rule;
+
         // Create descriptor first to register it
         descriptor = new VersionMonitor.DescriptorImpl();
 
@@ -67,7 +69,7 @@ public class VersionMonitorTest {
     @Test
     public void testDescriptorImplConstructor() {
         VersionMonitor.DescriptorImpl descriptorImpl = new VersionMonitor.DescriptorImpl();
-        assertSame("DESCRIPTOR should be set to this instance", VersionMonitor.DESCRIPTOR, descriptorImpl);
+        assertSame(VersionMonitor.DESCRIPTOR, descriptorImpl, "DESCRIPTOR should be set to this instance");
     }
 
     @Test
@@ -187,10 +189,10 @@ public class VersionMonitorTest {
                 .thenReturn(Launcher.VERSION);
 
         String result = descriptor.monitor(computer);
-        assertNotNull("Slave version should not be null", result);
+        assertNotNull(result, "Slave version should not be null");
         assertTrue(
-                "Slave version should be either current version or < 1.335",
-                result.equals(Launcher.VERSION) || result.equals("< 1.335"));
+                result.equals(Launcher.VERSION) || result.equals("< 1.335"),
+                "Slave version should be either current version or < 1.335");
     }
 
     @Test
@@ -249,15 +251,14 @@ public class VersionMonitorTest {
         when(computer.isOffline()).thenReturn(false);
 
         String result = spyDescriptor.monitor(computer);
-        assertEquals(differentVersion, result);
 
-        // Verify that the computer was marked offline with the appropriate cause
+        assertEquals(differentVersion, result);
         verify(computer).setTemporarilyOffline(eq(true), any(VersionMonitor.RemotingVersionMismatchCause.class));
     }
 
     @Test
-    public void testMonitor_NullVersion_NotIgnored() throws IOException, InterruptedException {
-        // Create a spy of the descriptor instead of using the real one
+    public void testMonitor_VersionIsNull_NotIgnored() throws IOException, InterruptedException {
+        // Create a spy of the descriptor
         VersionMonitor.DescriptorImpl spyDescriptor = spy(descriptor);
         doReturn(false).when(spyDescriptor).isIgnored();
 
@@ -270,54 +271,48 @@ public class VersionMonitorTest {
         when(computer.isOffline()).thenReturn(false);
 
         String result = spyDescriptor.monitor(computer);
-        assertNull(result);
 
-        // Verify that the computer was marked offline with the appropriate cause
+        assertNull(result);
         verify(computer).setTemporarilyOffline(eq(true), any(VersionMonitor.RemotingVersionMismatchCause.class));
     }
 
     @Test
-    public void testMonitor_OfflineDueToMismatch_VersionsDontMatch() throws IOException, InterruptedException {
-        // Create a spy of the descriptor instead of using the real one
+    public void testMonitor_DifferentVersion_AlreadyOffline() throws IOException, InterruptedException {
+        // Create a spy of the descriptor
         VersionMonitor.DescriptorImpl spyDescriptor = spy(descriptor);
-        // Make sure isIgnored returns false to test the offline check logic
         doReturn(false).when(spyDescriptor).isIgnored();
 
         Computer computer = mock(Computer.class);
         VirtualChannel channel = mock(VirtualChannel.class);
-        VersionMonitor.RemotingVersionMismatchCause cause = new VersionMonitor.RemotingVersionMismatchCause("Mismatch");
         String differentVersion = "different-version";
+        OfflineCause otherCause = mock(OfflineCause.class);
 
         when(computer.getChannel()).thenReturn(channel);
         when(channel.call(ArgumentMatchers.<MasterToSlaveCallable<String, IOException>>any()))
                 .thenReturn(differentVersion);
         when(computer.isOffline()).thenReturn(true);
-        when(computer.getOfflineCause()).thenReturn(cause);
+        when(computer.getOfflineCause()).thenReturn(otherCause);
 
-        // In this test, we don't explicitly verify never() since the implementation may
-        // or may not
-        // call setTemporarilyOffline depending on the internal logic.
-        // The key is that the monitor method should return the correct version.
         String result = spyDescriptor.monitor(computer);
-        assertEquals(differentVersion, result);
 
-        // Don't verify never() interaction, just ensure the result is correct
+        assertEquals(differentVersion, result);
+        verify(computer).setTemporarilyOffline(eq(true), any(VersionMonitor.RemotingVersionMismatchCause.class));
     }
 
     @Test
     public void testSlaveVersionCallableOldVersion() throws IOException, InterruptedException {
-        // Create a spy of the descriptor
-        VersionMonitor.DescriptorImpl spyDescriptor = spy(descriptor);
-
+        // Test that invoking the monitor method with a mocked channel returns "< 1.335"
+        // In this test, we set up the mock to directly return the expected value
+        // since we can't effectively mock the inner workings of the SlaveVersion
+        // callable
         Computer computer = mock(Computer.class);
         VirtualChannel channel = mock(VirtualChannel.class);
 
         when(computer.getChannel()).thenReturn(channel);
-        // Simulate the case when channel call throws an exception to mimic older versions with no VERSION field
         when(channel.call(ArgumentMatchers.<MasterToSlaveCallable<String, IOException>>any()))
                 .thenReturn("< 1.335");
 
-        String result = spyDescriptor.monitor(computer);
+        String result = descriptor.monitor(computer);
         assertEquals("< 1.335", result);
     }
 
@@ -326,19 +321,19 @@ public class VersionMonitorTest {
         // Test N/A handling
         assertEquals("N/A", versionMonitor.toHtml(null));
 
-        // Test error wrapping
+        // Test different version handling (gives error)
         String oldVersion = "1.0.0";
         String htmlResult = versionMonitor.toHtml(oldVersion);
-        // Should be wrapped in error span
-        assertTrue(htmlResult.contains("<span"));
-        assertTrue(htmlResult.contains(oldVersion));
+        assertTrue(htmlResult.contains("<span"), "HTML result should contain span tag");
+        assertTrue(htmlResult.contains(oldVersion), "HTML result should contain the version");
     }
 
-    private class TestLauncher implements FakeLauncher {
-
+    // A simple test launcher that doesn't do anything
+    // just for creating a PretendSlave with no real connection
+    private static class TestLauncher implements FakeLauncher {
         @Override
-        public Proc onLaunch(hudson.Launcher.ProcStarter p) throws IOException {
-            throw new UnsupportedOperationException("Unsupported run.");
+        public Proc onLaunch(hudson.Launcher.ProcStarter procStarter) throws IOException {
+            return null; // Return null since we don't need an actual process
         }
     }
 }

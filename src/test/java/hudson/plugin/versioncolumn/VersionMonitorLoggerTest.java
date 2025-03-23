@@ -1,7 +1,7 @@
 package hudson.plugin.versioncolumn;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.*;
 
 import hudson.model.Computer;
@@ -12,9 +12,9 @@ import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 import jenkins.security.MasterToSlaveCallable;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
 
 public class VersionMonitorLoggerTest {
@@ -25,7 +25,7 @@ public class VersionMonitorLoggerTest {
     private Logger logger;
     private TestLogHandler handler;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         descriptor = spy(new VersionMonitor.DescriptorImpl());
         doReturn(false).when(descriptor).isIgnored(); // Not ignored
@@ -40,7 +40,7 @@ public class VersionMonitorLoggerTest {
         logger.setLevel(Level.ALL);
     }
 
-    @After
+    @AfterEach
     public void tearDown() {
         logger.removeHandler(handler);
     }
@@ -55,35 +55,33 @@ public class VersionMonitorLoggerTest {
         descriptor.monitor(computer);
 
         // Verify the log message contains the agent name
-        assertTrue("Log should contain agent name", handler.getMessage().contains("TestAgent"));
+        assertTrue(handler.getMessage().contains("TestAgent"), "Log should contain agent name");
         assertEquals(Level.WARNING, handler.getLevel());
     }
 
     // Custom log handler to capture logs
     private static class TestLogHandler extends Handler {
-        private LogRecord lastRecord;
+        private LogRecord record;
 
         @Override
         public void publish(LogRecord record) {
-            lastRecord = record;
+            this.record = record;
         }
 
         @Override
         public void flush() {
-            // Not needed
         }
 
         @Override
-        public void close() throws SecurityException {
-            // Not needed
+        public void close() {
         }
 
         public String getMessage() {
-            return lastRecord != null ? lastRecord.getMessage() : null;
+            return record.getMessage();
         }
 
         public Level getLevel() {
-            return lastRecord != null ? lastRecord.getLevel() : null;
+            return record.getLevel();
         }
     }
 }
