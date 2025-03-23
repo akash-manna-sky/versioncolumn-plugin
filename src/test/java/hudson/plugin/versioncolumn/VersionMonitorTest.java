@@ -30,7 +30,9 @@ import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
 import org.mockito.ArgumentMatchers;
 
 @WithJenkins
-public class VersionMonitorTest {
+class VersionMonitorTest {
+
+    private static JenkinsRule j;
 
     private VersionMonitor versionMonitor;
     private VersionMonitor.DescriptorImpl descriptor;
@@ -41,44 +43,47 @@ public class VersionMonitorTest {
         // Store the rule for later use
         this.j = rule;
 
-        // Create descriptor first to register it
-        descriptor = new VersionMonitor.DescriptorImpl();
+    @BeforeAll
+    static void setUp(JenkinsRule rule) {
+        j = rule;
+    }
 
         // Now create the version monitor
         versionMonitor = new VersionMonitor();
+        descriptor = (VersionMonitor.DescriptorImpl) versionMonitor.getDescriptor();
     }
 
     @Test
-    public void testToHtml_NullVersion() {
+    void testToHtml_NullVersion() {
         assertEquals("N/A", versionMonitor.toHtml(null));
     }
 
     @Test
-    public void testToHtml_SameVersion() {
+    void testToHtml_SameVersion() {
         String remotingVersion = RemotingVersionInfo.getEmbeddedVersion().toString();
         assertEquals(Launcher.VERSION, remotingVersion);
         assertEquals(Launcher.VERSION, versionMonitor.toHtml(remotingVersion));
     }
 
     @Test
-    public void testToHtml_DifferentVersion() {
+    void testToHtml_DifferentVersion() {
         String version = RemotingVersionInfo.getMinimumSupportedVersion().toString();
         assertEquals(Util.wrapToErrorSpan(version), versionMonitor.toHtml(version));
     }
 
     @Test
-    public void testDescriptorImplConstructor() {
+    void testDescriptorImplConstructor() {
         VersionMonitor.DescriptorImpl descriptorImpl = new VersionMonitor.DescriptorImpl();
         assertSame(VersionMonitor.DESCRIPTOR, descriptorImpl, "DESCRIPTOR should be set to this instance");
     }
 
     @Test
-    public void testGetDisplayName() {
+    void testGetDisplayName() {
         assertEquals("Remoting Version", descriptor.getDisplayName());
     }
 
     @Test
-    public void testMonitor_NullChannel() throws Exception {
+    void testMonitor_NullChannel() throws Exception {
         PretendSlave pretendAgent = j.createPretendSlave(new TestLauncher());
         Computer computer = pretendAgent.createComputer();
         assertNull(computer.getChannel()); // Pre-condition for next assertion
@@ -86,7 +91,7 @@ public class VersionMonitorTest {
     }
 
     @Test
-    public void testMonitor_SameVersion() throws Exception {
+    void testMonitor_SameVersion() throws Exception {
         DumbSlave agent = j.createOnlineSlave();
         Computer computer = agent.getComputer();
         assertNotNull(computer.getChannel());
@@ -94,7 +99,7 @@ public class VersionMonitorTest {
     }
 
     @Test
-    public void testMonitor_DifferentVersion_Ignored() throws IOException, InterruptedException {
+    void testMonitor_DifferentVersion_Ignored() throws IOException, InterruptedException {
         VersionMonitor.DescriptorImpl mockDescriptor = spy(new VersionMonitor.DescriptorImpl());
         doReturn(true).when(mockDescriptor).isIgnored(); // Ensure isIgnored returns true.
 
@@ -114,7 +119,7 @@ public class VersionMonitorTest {
     }
 
     @Test
-    public void testMonitor_VersionIsNull_Ignored() throws IOException, InterruptedException {
+    void testMonitor_VersionIsNull_Ignored() throws IOException, InterruptedException {
         VersionMonitor.DescriptorImpl mockDescriptor = spy(new VersionMonitor.DescriptorImpl());
         doReturn(true).when(mockDescriptor).isIgnored(); // Ensure isIgnored returns true.
 
@@ -135,7 +140,7 @@ public class VersionMonitorTest {
     }
 
     @Test
-    public void testMonitor_OfflineDueToMismatch_VersionsMatch() throws IOException, InterruptedException {
+    void testMonitor_OfflineDueToMismatch_VersionsMatch() throws IOException, InterruptedException {
         Computer computer = mock(Computer.class);
         VirtualChannel channel = mock(VirtualChannel.class);
         VersionMonitor.RemotingVersionMismatchCause cause = new VersionMonitor.RemotingVersionMismatchCause("Mismatch");
@@ -153,7 +158,7 @@ public class VersionMonitorTest {
     }
 
     @Test
-    public void testMonitor_OfflineDueToOtherCause() throws IOException, InterruptedException {
+    void testMonitor_OfflineDueToOtherCause() throws IOException, InterruptedException {
         Computer computer = mock(Computer.class);
         VirtualChannel channel = mock(VirtualChannel.class);
         OfflineCause otherCause = mock(OfflineCause.class);
@@ -171,7 +176,7 @@ public class VersionMonitorTest {
     }
 
     @Test
-    public void testRemotingVersionMismatchCause() {
+    void testRemotingVersionMismatchCause() {
         String message = "Version mismatch";
         VersionMonitor.RemotingVersionMismatchCause cause = new VersionMonitor.RemotingVersionMismatchCause(message);
 
@@ -332,8 +337,8 @@ public class VersionMonitorTest {
     // just for creating a PretendSlave with no real connection
     private static class TestLauncher implements FakeLauncher {
         @Override
-        public Proc onLaunch(hudson.Launcher.ProcStarter procStarter) throws IOException {
-            return null; // Return null since we don't need an actual process
+        public Proc onLaunch(hudson.Launcher.ProcStarter p) {
+            throw new UnsupportedOperationException("Unsupported run.");
         }
     }
 }
