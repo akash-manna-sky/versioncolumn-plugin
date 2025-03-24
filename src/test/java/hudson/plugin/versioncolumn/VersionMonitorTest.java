@@ -45,8 +45,15 @@ class VersionMonitorTest {
 
     @BeforeEach
     void createVersionMonitor() {
+        // Create the versionMonitor instance directly
         versionMonitor = new VersionMonitor();
-        descriptor = (VersionMonitor.DescriptorImpl) versionMonitor.getDescriptor();
+
+        // Create a spy of the descriptor instead of trying to get it from
+        // versionMonitor
+        descriptor = spy(new VersionMonitor.DescriptorImpl());
+
+        // Set the static DESCRIPTOR field to our spy
+        VersionMonitor.DESCRIPTOR = descriptor;
     }
 
     @Test
@@ -238,9 +245,8 @@ class VersionMonitorTest {
 
     @Test
     public void testMonitor_DifferentVersion_NotIgnored() throws IOException, InterruptedException {
-        // Create a spy of the descriptor instead of using the real one
-        VersionMonitor.DescriptorImpl spyDescriptor = spy(descriptor);
-        doReturn(false).when(spyDescriptor).isIgnored();
+        // Use the descriptor that's already a spy from createVersionMonitor()
+        doReturn(false).when(descriptor).isIgnored();
 
         Computer computer = mock(Computer.class);
         VirtualChannel channel = mock(VirtualChannel.class);
@@ -251,7 +257,7 @@ class VersionMonitorTest {
                 .thenReturn(differentVersion);
         when(computer.isOffline()).thenReturn(false);
 
-        String result = spyDescriptor.monitor(computer);
+        String result = descriptor.monitor(computer);
 
         assertEquals(differentVersion, result);
         verify(computer).setTemporarilyOffline(eq(true), any(VersionMonitor.RemotingVersionMismatchCause.class));
@@ -259,9 +265,8 @@ class VersionMonitorTest {
 
     @Test
     public void testMonitor_VersionIsNull_NotIgnored() throws IOException, InterruptedException {
-        // Create a spy of the descriptor
-        VersionMonitor.DescriptorImpl spyDescriptor = spy(descriptor);
-        doReturn(false).when(spyDescriptor).isIgnored();
+        // Use the descriptor that's already a spy from createVersionMonitor()
+        doReturn(false).when(descriptor).isIgnored();
 
         Computer computer = mock(Computer.class);
         VirtualChannel channel = mock(VirtualChannel.class);
@@ -271,7 +276,7 @@ class VersionMonitorTest {
                 .thenReturn(null);
         when(computer.isOffline()).thenReturn(false);
 
-        String result = spyDescriptor.monitor(computer);
+        String result = descriptor.monitor(computer);
 
         assertNull(result);
         verify(computer).setTemporarilyOffline(eq(true), any(VersionMonitor.RemotingVersionMismatchCause.class));
@@ -279,9 +284,8 @@ class VersionMonitorTest {
 
     @Test
     public void testMonitor_DifferentVersion_AlreadyOffline() throws IOException, InterruptedException {
-        // Create a spy of the descriptor
-        VersionMonitor.DescriptorImpl spyDescriptor = spy(descriptor);
-        doReturn(false).when(spyDescriptor).isIgnored();
+        // Use the descriptor that's already a spy from createVersionMonitor()
+        doReturn(false).when(descriptor).isIgnored();
 
         Computer computer = mock(Computer.class);
         VirtualChannel channel = mock(VirtualChannel.class);
@@ -294,7 +298,7 @@ class VersionMonitorTest {
         when(computer.isOffline()).thenReturn(true);
         when(computer.getOfflineCause()).thenReturn(otherCause);
 
-        String result = spyDescriptor.monitor(computer);
+        String result = descriptor.monitor(computer);
 
         assertEquals(differentVersion, result);
         verify(computer).setTemporarilyOffline(eq(true), any(VersionMonitor.RemotingVersionMismatchCause.class));
